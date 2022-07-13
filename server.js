@@ -2,7 +2,10 @@ const express = require('express')
 const session = require('express-session')
 const MongoDBStore = require('connect-mongodb-session')(session);
 const mongodb = require('mongoose')
+const bcrypt = require('bcryptjs');
 const app = express()
+
+const UserModel = require('./models/User')
 const MongoUri = "mongodb://localhost:27017/sessions"
 mongodb.connect(MongoUri, { useNewUrlParser: true, useUnifiedTopology: true }).then(() => {
     console.log("Mongo db connected")
@@ -35,8 +38,20 @@ app.post('/login', (req, res) => {
 app.get('/register', (req, res) => {
     res.render('register')
 })
-app.post('/register', (req, res) => {
-    console.log(req.body)
+app.post('/register', async (req, res) => {
+    var { username, email, password } = req.body
+    var user = await UserModel.findOne({ email })
+    if (user) {
+        res.redirect('/register')
+    }
+    var hashpwd = await bcrypt.hash(password, 12)
+    var newuser = new UserModel({
+        username,
+        email,
+        password: hashpwd
+    });
+    await newuser.save()
+    res.redirect('/login')
 })
 app.get('/', (req, res) => {
     res.render('dashboard')
