@@ -29,11 +29,31 @@ app.use(session({
 app.set('view engine', 'ejs');
 app.use(express.urlencoded({ extended: true }));
 
+const isAuth = (req, res, next) => {
+    if (req.session.isAuth) {
+        next()
+    } else {
+        res.redirect('/login')
+    }
+}
+
+
 app.get('/login', (req, res) => {
     res.render('login')
 })
-app.post('/login', (req, res) => {
-    console.log(req.body)
+app.post('/login', async (req, res) => {
+    var { email, password } = req.body
+    var user = await UserModel.findOne({ email })
+    if (!user) {
+        res.redirect('/login')
+    }
+    var isMatchPwd = await bcrypt.compare(password, user.password)
+    if (!isMatchPwd) {
+        res.redirect('/login')
+    }
+    req.session.isAuth = true
+    res.redirect('/')
+
 })
 app.get('/register', (req, res) => {
     res.render('register')
@@ -53,9 +73,15 @@ app.post('/register', async (req, res) => {
     await newuser.save()
     res.redirect('/login')
 })
-app.get('/', (req, res) => {
+app.get('/', isAuth, (req, res) => {
     res.render('dashboard')
 })
+app.post('/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) throw err
+        res.redirect('/login')
+    })
 
+})
 
 app.listen(3000, console.log('Server is running att https://localhost:3000'))
